@@ -1,0 +1,555 @@
+{
+  "provider": "autogen_agentchat.teams.SelectorGroupChat",
+  "component_type": "team",
+  "version": 1,
+  "component_version": 1,
+  "description": "A group chat team that have participants takes turn to publish a message\n    to all, using a ChatCompletion model to select the next speaker after each message.",
+  "label": "SelectorGroupChat",
+  "config": {
+    "participants": [
+      {
+        "provider": "autogen_agentchat.agents.UserProxyAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "description": "An agent that can represent a human user through an input function.",
+        "label": "UserProxyAgent",
+        "config": {
+          "name": "Mehmet_Gur",
+          "description": "Represents the end-user Mehmet_Gur. Initiates requests and PROVIDES INPUT via the UI/terminal when asked."
+        }
+      },
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "description": "An agent that provides assistance with tool use.",
+        "label": "AssistantAgent",
+        "config": {
+          "name": "Orchestrator",
+          "model_client": {
+            "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for OpenAI hosted models.",
+            "label": "OpenAIChatCompletionClient",
+            "config": {
+              "model": "gpt-4o",
+              "api_key": "**********"
+            }
+          },
+          "tools": [],
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext",
+            "config": {}
+          },
+          "description": "The main orchestrator managing the workflow and delegating tasks using GPT-4o.",
+          "system_message": "You are the Orchestrator/Supervisor Agent managing a multi-agent team. Your goal is to fulfill the user's request by following the plan provided by Intent_Task_Router.\n\nAvailable Agents: Input_Preprocessor, Intent_Task_Router, Research_Agent, Summarization_Agent, Email_Drafting_Agent, Email_Processing_Agent, To_Do_List_Agent, Scheduling_Calendar_Agent, Clarification_Agent, Analytics_Logging_Agent, Mehmet_Gur.\n\nCore Responsibilities:\n1.  Receive and understand the plan.\n2.  Delegate tasks sequentially to the appropriate agents named in the plan. Clearly state the full name of the agent (e.g., 'Research_Agent, please research...').\n3.  Provide necessary inputs, extracting relevant information from previous steps or user clarifications.\n4.  If essential information is missing (e.g., manager's email for saving), instruct Clarification_Agent to ask Mehmet_Gur. Wait for the response before proceeding with the step requiring the information.\n5.  For the Research_Agent, provide the research topic clearly.\n6.  For tool-using agents (Email_Processing_Agent, To_Do_List_Agent, Scheduling_Calendar_Agent, Analytics_Logging_Agent), explicitly instruct them WHEN to call their specific tool and provide the EXACT required arguments.\n7.  Simplified Email Workflow:\n    a) Instruct Email_Drafting_Agent to draft the email body.\n    b) Receive the body from Email_Drafting_Agent.\n    c) Instruct Email_Processing_Agent to analyze the sentiment of the received body.\n    d) Receive the sentiment analysis result.\n    e) Instruct Email_Processing_Agent to CALL THE TOOL 'save_email_draft' providing the 'to' (obtained via clarification if needed), 'subject', and the 'body' received in step (b).\n    f) Wait for and verify the confirmation message from the tool call before moving to the next planned step.\n8.  Wait for and verify responses or tool confirmations from all agents before proceeding to the next step in the plan.\n9.  Handle agent errors reasonably (e.g., retry, ask for clarification, or report inability to complete).\n10. Ensure ALL planned steps are completed in sequence. DO NOT skip steps.\n11. Adhere strictly to agent roles.\n\nCritical Workflow Points:\n*   Delegation: Always clearly name the agent being instructed.\n*   Tool Calls: Explicitly instruct agents like Email_Processing_Agent to 'Call the [tool_name] tool with arguments: ...'.\n*   Final Output: After all steps are complete, formulate a concise summary prefixed EXACTLY with \"FINAL_OUTPUT: \", and end the ENTIRE message IMMEDIATELY with \"TERMINATE\". Example: \"FINAL_OUTPUT: Research done, summary created, email drafted, sentiment checked, draft saved, todo added, meeting logged. TERMINATE\"\n*   Do not send any message after the FINAL_OUTPUT/TERMINATE message.\n\nThink step-by-step based on the plan and the last message before deciding which agent to instruct next.",
+          "model_client_stream": false,
+          "reflect_on_tool_use": false,
+          "tool_call_summary_format": "{result}"
+        }
+      },
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "description": "An agent that provides assistance with tool use.",
+        "label": "AssistantAgent",
+        "config": {
+          "name": "Input_Preprocessor",
+          "model_client": {
+            "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for OpenAI hosted models.",
+            "label": "OpenAIChatCompletionClient",
+            "config": {
+              "model": "gpt-4",
+              "api_key": "**********"
+            }
+          },
+          "tools": [],
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext",
+            "config": {}
+          },
+          "description": "Cleans and preprocesses the initial user query.",
+          "system_message": "You are the Input Preprocessing Agent.\n1.  Receive the raw user query from the Orchestrator.\n2.  Clean grammar, spelling, and identify key entities.\n3.  Your ONLY output MUST be the cleaned query itself, prefixed with 'Cleaned Query:'.\n    Example: 'Cleaned Query: Search the web for AutoGen benefits, summarize them, email Alex, and add a todo.'\n4.  DO NOT add conversational filler, explanations, or confirmations.",
+          "model_client_stream": false,
+          "reflect_on_tool_use": false,
+          "tool_call_summary_format": "{result}"
+        }
+      },
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "description": "An agent that provides assistance with tool use.",
+        "label": "AssistantAgent",
+        "config": {
+          "name": "Intent_Task_Router",
+          "model_client": {
+            "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for OpenAI hosted models.",
+            "label": "OpenAIChatCompletionClient",
+            "config": {
+              "model": "gpt-4",
+              "api_key": "**********"
+            }
+          },
+          "tools": [],
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext",
+            "config": {}
+          },
+          "description": "Analyzes query, creates a step-by-step plan using new agent names.",
+          "system_message": "You are the Intent & Task Routing Agent.\n1.  Receive the preprocessed query from the Orchestrator.\n2.  Determine user intent(s).\n3.  Create a sequential plan outlining the agents needed and their inputs/tasks. Use official agent names (Research_Agent, Summarization_Agent, Email_Drafting_Agent, Email_Processing_Agent, To_Do_List_Agent, Scheduling_Calendar_Agent, Clarification_Agent, Analytics_Logging_Agent etc.).\n4.  For email tasks, plan these steps sequentially: Email_Drafting_Agent (draft body) -> Email_Processing_Agent (analyze sentiment) -> [Optional: Clarification_Agent if recipient email missing] -> Email_Processing_Agent (save draft tool call).\n5.  For scheduling, plan a step for Scheduling_Calendar_Agent to call the 'add_scheduled_event' tool with necessary arguments.\n6.  For web search tasks, plan a step for Research_Agent, providing the research topic.\n7.  Your ONLY output MUST be the plan itself, prefixed with 'Plan:'.\n    Example: 'Plan: 1. Research_Agent (task='find key features of Jotform'). 2. Summarization_Agent (task='summarize top 3 features in bullet points'). 3. Email_Drafting_Agent (task='draft email body summarizing features and suggesting evaluation'). 4. Email_Processing_Agent (task='analyze sentiment of the draft'). 5. Clarification_Agent (task='ask Mehmet_Gur for manager's email if not provided'). 6. Email_Processing_Agent (task='call save_email_draft tool with details'). 7. To_Do_List_Agent (task='call add_todo_item tool'). 8. Scheduling_Calendar_Agent (task='call add_scheduled_event tool'). 9. Analytics_Logging_Agent (task='call log_event tool').'\n8.  DO NOT execute any tasks yourself.",
+          "model_client_stream": false,
+          "reflect_on_tool_use": false,
+          "tool_call_summary_format": "{result}"
+        }
+      },
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "description": "An agent that provides assistance with tool use.",
+        "label": "AssistantAgent",
+        "config": {
+          "name": "Research_Agent",
+          "model_client": {
+            "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for OpenAI hosted models.",
+            "label": "OpenAIChatCompletionClient",
+            "config": {
+              "model": "gpt-4o",
+              "api_key": "**********"
+            }
+          },
+          "tools": [],
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext",
+            "config": {}
+          },
+          "description": "Performs web research using GPT-4o's capabilities.",
+          "system_message": "You are a research assistant. When the Orchestrator asks you to research a specific topic online (e.g., 'Research_Agent, please research key features of X'), use your web browsing capabilities to find the most relevant and factual information. Present the raw findings from your search clearly and concisely. Do not add conversational filler like 'Here are the results:'. Focus ONLY on presenting the information found. If you cannot find information or encounter an error, state that clearly.",
+          "model_client_stream": false,
+          "reflect_on_tool_use": false,
+          "tool_call_summary_format": "{result}"
+        }
+      },
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "description": "An agent that provides assistance with tool use.",
+        "label": "AssistantAgent",
+        "config": {
+          "name": "Summarization_Agent",
+          "model_client": {
+            "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for OpenAI hosted models.",
+            "label": "OpenAIChatCompletionClient",
+            "config": {
+              "model": "gpt-4",
+              "api_key": "**********"
+            }
+          },
+          "tools": [],
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext",
+            "config": {}
+          },
+          "description": "Summarizes provided text based on instructions.",
+          "system_message": "You are the Summarization Agent. Your ONLY task is to summarize text provided by the Orchestrator.\n1.  Expect to receive text (potentially raw research results) from the Orchestrator.\n2.  Generate a concise summary strictly following the format and length instructions (e.g., 'summarize in 3 bullet points').\n3.  Your ONLY output MUST be the generated summary text itself.\n4.  If you cannot process the input or understand the instructions, respond with a clear error message.",
+          "model_client_stream": false,
+          "reflect_on_tool_use": false,
+          "tool_call_summary_format": "{result}"
+        }
+      },
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "description": "An agent that provides assistance with tool use.",
+        "label": "AssistantAgent",
+        "config": {
+          "name": "Email_Drafting_Agent",
+          "model_client": {
+            "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for OpenAI hosted models.",
+            "label": "OpenAIChatCompletionClient",
+            "config": {
+              "model": "gpt-4",
+              "api_key": "**********"
+            }
+          },
+          "tools": [],
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext",
+            "config": {}
+          },
+          "description": "Generates ONLY the email body content.",
+          "system_message": "You are an email drafting assistant. Receive context and instructions from the Orchestrator (e.g., 'Draft an email body summarizing...'). Generate ONLY the email body text based on the provided context and instructions. Do not add conversational filler, greetings like 'Here is the draft:', or signatures.",
+          "model_client_stream": false,
+          "reflect_on_tool_use": false,
+          "tool_call_summary_format": "{result}"
+        }
+      },
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "description": "An agent that provides assistance with tool use.",
+        "label": "AssistantAgent",
+        "config": {
+          "name": "Email_Processing_Agent",
+          "model_client": {
+            "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for OpenAI hosted models.",
+            "label": "OpenAIChatCompletionClient",
+            "config": {
+              "model": "gpt-4",
+              "api_key": "**********"
+            }
+          },
+          "tools": [
+            {
+              "provider": "autogen_core.tools.FunctionTool",
+              "component_type": "tool",
+              "version": 1,
+              "component_version": 1,
+              "description": "Create custom tools by wrapping standard Python functions.",
+              "label": "FunctionTool",
+              "config": {
+                "source_code": "def save_email_draft(to: str, subject: str, body: str) -> str:\n    \"\"\"Saves the generated email draft (to, subject, body) to a file ('email_drafts.txt').\"\"\"\n    draft_file = \"email_drafts.txt\"\n    timestamp = datetime.datetime.now().strftime(\"%Y%m%d_%H%M%S\")\n    draft_content = f\"\"\"--- Draft Saved: {timestamp} ---\nTo: {to}\nSubject: {subject}\n--- Body ---\n{body}\n--- End Draft ---\n\"\"\"\n    try:\n        with open(draft_file, \"a\", encoding=\"utf-8\") as f:\n            f.write(draft_content + \"\\n\\n\")\n        return f\"Email draft for {to} with subject '{subject}' saved to {draft_file}.\"\n    except Exception as e:\n        print(f\"Error saving email draft: {e}\")\n        return f\"Error saving email draft: {e}\"\n",
+                "name": "save_email_draft",
+                "description": "Saves the generated email draft (to, subject, body) to a file ('email_drafts.txt').",
+                "global_imports": [],
+                "has_cancellation_support": false
+              }
+            }
+          ],
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext",
+            "config": {}
+          },
+          "description": "Analyzes email sentiment OR saves draft using 'save_email_draft' tool.",
+          "system_message": "You are an email processing agent. Strictly follow the Orchestrator's instruction for ONE of the following tasks per turn:\n\nTASK 1: Analyze Sentiment\n1.  Instruction received: \"Analyze the sentiment of the following email body:\" followed by the text.\n2.  Perform sentiment analysis.\n3.  Output ONLY the result prefixed with 'Sentiment:'. Example: 'Sentiment: Positive'.\n\nTASK 2: Save Email Draft (Tool Call)\n1.  Instruction received: \"Call the 'save_email_draft' tool with arguments: to='...', subject='...', body='...'\" (Arguments will be provided explicitly).\n2.  Call the 'save_email_draft' tool using EXACTLY the provided arguments.\n3.  Report ONLY the confirmation message returned by the tool (e.g., \"Email draft for... saved to ...\").\n\nDo NOT perform any task other than the one explicitly instructed by the Orchestrator for the current turn.",
+          "model_client_stream": false,
+          "reflect_on_tool_use": true,
+          "tool_call_summary_format": "{result}"
+        }
+      },
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "description": "An agent that provides assistance with tool use.",
+        "label": "AssistantAgent",
+        "config": {
+          "name": "To_Do_List_Agent",
+          "model_client": {
+            "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for OpenAI hosted models.",
+            "label": "OpenAIChatCompletionClient",
+            "config": {
+              "model": "gpt-4",
+              "api_key": "**********"
+            }
+          },
+          "tools": [
+            {
+              "provider": "autogen_core.tools.FunctionTool",
+              "component_type": "tool",
+              "version": 1,
+              "component_version": 1,
+              "description": "Create custom tools by wrapping standard Python functions.",
+              "label": "FunctionTool",
+              "config": {
+                "source_code": "def add_todo_item(task: str) -> str:\n    \"\"\"Adds the given task string to a to-do list file ('todo_list.txt').\"\"\"\n    todo_file = \"todo_list.txt\"\n    timestamp = datetime.datetime.now().strftime(\"%Y-%m-%d %H:%M\")\n    try:\n        with open(todo_file, \"a\", encoding=\"utf-8\") as f:\n            f.write(f\"[{timestamp}] - {task}\\n\")\n        return f\"Task '{task}' added to the To-Do list ({todo_file}).\"\n    except Exception as e:\n        print(f\"Error adding todo: {e}\")\n        return f\"Error adding task to To-Do list: {e}\"\n",
+                "name": "add_todo_item",
+                "description": "Adds the given task string to a to-do list file ('todo_list.txt').",
+                "global_imports": [],
+                "has_cancellation_support": false
+              }
+            }
+          ],
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext",
+            "config": {}
+          },
+          "description": "Adds tasks to a to-do list file using 'add_todo_item' tool.",
+          "system_message": "You are the To-Do List Agent. Your ONLY task is to add items to the to-do list using the 'add_todo_item' tool when explicitly instructed by the Orchestrator.\n1.  Instruction received: \"Call the 'add_todo_item' tool with argument: task='...'\" (Task description will be provided explicitly).\n2.  Call the 'add_todo_item' tool with the exact task description provided.\n3.  Report ONLY the confirmation message returned by the tool.",
+          "model_client_stream": false,
+          "reflect_on_tool_use": true,
+          "tool_call_summary_format": "{result}"
+        }
+      },
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "description": "An agent that provides assistance with tool use.",
+        "label": "AssistantAgent",
+        "config": {
+          "name": "Scheduling_Calendar_Agent",
+          "model_client": {
+            "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for OpenAI hosted models.",
+            "label": "OpenAIChatCompletionClient",
+            "config": {
+              "model": "gpt-4",
+              "api_key": "**********"
+            }
+          },
+          "tools": [
+            {
+              "provider": "autogen_core.tools.FunctionTool",
+              "component_type": "tool",
+              "version": 1,
+              "component_version": 1,
+              "description": "Create custom tools by wrapping standard Python functions.",
+              "label": "FunctionTool",
+              "config": {
+                "source_code": "def add_scheduled_event(subject: str, attendees: list[str], time_preference: str, duration_minutes: int) -> str:\n    \"\"\"Saves a simulated calendar event (subject, attendees list, time preference string, duration integer) to 'calendar_log.txt'.\"\"\"\n    log_file = \"calendar_log.txt\"\n    timestamp = datetime.datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")\n    attendee_str = \", \".join(attendees)\n    log_entry = f\"[{timestamp}] Scheduled Event (Simulated): Subject='{subject}', Attendees='{attendee_str}', Time='{time_preference}', Duration='{duration_minutes} minutes'\"\n    try:\n        with open(log_file, \"a\", encoding=\"utf-8\") as f:\n            f.write(log_entry + \"\\n\")\n        return f\"Simulated event '{subject}' logged successfully to {log_file}.\"\n    except Exception as e:\n        print(f\"Error logging calendar event: {e}\")\n        return f\"Error logging simulated event: {e}\"\n",
+                "name": "add_scheduled_event",
+                "description": "Saves a simulated calendar event (subject, attendees list, time preference string, duration integer) to 'calendar_log.txt'.",
+                "global_imports": [],
+                "has_cancellation_support": false
+              }
+            }
+          ],
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext",
+            "config": {}
+          },
+          "description": "Logs simulated calendar events using 'add_scheduled_event' tool.",
+          "system_message": "You are the Scheduling & Calendar Agent. Your ONLY task is to log simulated calendar events using the 'add_scheduled_event' tool when explicitly instructed by the Orchestrator.\n1.  Instruction received: \"Call the 'add_scheduled_event' tool with arguments: subject='...', attendees=[...], time_preference='...', duration_minutes=...\" (Arguments will be provided explicitly).\n2.  Call the 'add_scheduled_event' tool using EXACTLY the provided arguments.\n3.  Report ONLY the confirmation message returned by the tool.",
+          "model_client_stream": false,
+          "reflect_on_tool_use": true,
+          "tool_call_summary_format": "{result}"
+        }
+      },
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "description": "An agent that provides assistance with tool use.",
+        "label": "AssistantAgent",
+        "config": {
+          "name": "Clarification_Agent",
+          "model_client": {
+            "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for OpenAI hosted models.",
+            "label": "OpenAIChatCompletionClient",
+            "config": {
+              "model": "gpt-4",
+              "api_key": "**********"
+            }
+          },
+          "tools": [],
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext",
+            "config": {}
+          },
+          "description": "Asks the user (Mehmet_Gur) clarifying questions when instructed.",
+          "system_message": "You are the Clarification Agent. Your ONLY purpose is to ask the user (Mehmet_Gur) for missing information when instructed by the Orchestrator.\n1.  Receive instructions from the Orchestrator specifying exactly what information is needed (e.g., \"Ask Mehmet_Gur for the manager's email address\").\n2.  Formulate a concise question directed at Mehmet_Gur based ONLY on the Orchestrator's request.\n3.  Your ONLY output MUST be the question itself.\n    Example: 'What is the email address for the manager?' or 'Which specific features should I focus on?'\n4.  DO NOT add conversational filler or attempt to answer the question yourself.",
+          "model_client_stream": false,
+          "reflect_on_tool_use": false,
+          "tool_call_summary_format": "{result}"
+        }
+      },
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "description": "An agent that provides assistance with tool use.",
+        "label": "AssistantAgent",
+        "config": {
+          "name": "Analytics_Logging_Agent",
+          "model_client": {
+            "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for OpenAI hosted models.",
+            "label": "OpenAIChatCompletionClient",
+            "config": {
+              "model": "gpt-4",
+              "api_key": "**********"
+            }
+          },
+          "tools": [
+            {
+              "provider": "autogen_core.tools.FunctionTool",
+              "component_type": "tool",
+              "version": 1,
+              "component_version": 1,
+              "description": "Create custom tools by wrapping standard Python functions.",
+              "label": "FunctionTool",
+              "config": {
+                "source_code": "def log_event(event_details: str) -> str:\n    \"\"\"Saves the specified event detail string to a log file ('assistant_log.txt') with a timestamp.\"\"\"\n    log_file = \"assistant_log.txt\"\n    timestamp = datetime.datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")\n    try:\n        with open(log_file, \"a\", encoding=\"utf-8\") as f:\n            f.write(f\"[{timestamp}] {event_details}\\n\")\n        return f\"Event logged successfully to {log_file}: {event_details}\"\n    except Exception as e:\n        print(f\"Error logging event: {e}\")\n        return f\"Error logging event: {e}\"\n",
+                "name": "log_event",
+                "description": "Saves the specified event detail string to a log file ('assistant_log.txt') with a timestamp.",
+                "global_imports": [],
+                "has_cancellation_support": false
+              }
+            }
+          ],
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext",
+            "config": {}
+          },
+          "description": "Logs specific events using the 'log_event' tool.",
+          "system_message": "You are the Analytics & Logging Agent. Your ONLY task is to log events using the 'log_event' tool when explicitly instructed by the Orchestrator.\n1.  Instruction received: \"Call the 'log_event' tool with argument: event_details='...'\" (Details will be provided explicitly).\n2.  Call the 'log_event' tool with those exact details.\n3.  Report ONLY the success message returned by the tool.",
+          "model_client_stream": false,
+          "reflect_on_tool_use": true,
+          "tool_call_summary_format": "{result}"
+        }
+      }
+    ],
+    "model_client": {
+      "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+      "component_type": "model",
+      "version": 1,
+      "component_version": 1,
+      "description": "Chat completion client for OpenAI hosted models.",
+      "label": "OpenAIChatCompletionClient",
+      "config": {
+        "model": "gpt-4",
+        "api_key": "**********"
+      }
+    },
+    "termination_condition": {
+      "provider": "autogen_agentchat.base.OrTerminationCondition",
+      "component_type": "termination",
+      "version": 1,
+      "component_version": 1,
+      "label": "OrTerminationCondition",
+      "config": {
+        "conditions": [
+          {
+            "provider": "autogen_agentchat.conditions.TextMentionTermination",
+            "component_type": "termination",
+            "version": 1,
+            "component_version": 1,
+            "description": "Terminate the conversation if a specific text is mentioned.",
+            "label": "TextMentionTermination",
+            "config": {
+              "text": "TERMINATE"
+            }
+          },
+          {
+            "provider": "autogen_agentchat.conditions.MaxMessageTermination",
+            "component_type": "termination",
+            "version": 1,
+            "component_version": 1,
+            "description": "Terminate the conversation after a maximum number of messages have been exchanged.",
+            "label": "MaxMessageTermination",
+            "config": {
+              "max_messages": 50,
+              "include_agent_event": false
+            }
+          }
+        ]
+      }
+    },
+    "selector_prompt": "Select the next agent to speak based on the conversation history and the Orchestrator's instructions.\n\nAvailable Agents (Roles):\n{roles}\n\nConversation History:\n{history}\n\nParticipants: {participants}.\n\nCarefully read the last few messages, especially the Orchestrator's instructions.\n- If the Orchestrator explicitly names the next agent (e.g., 'Research_Agent, please...', 'Summarization_Agent, summarize...', 'Email_Drafting_Agent, draft...', 'Email_Processing_Agent, analyze sentiment...', 'Email_Processing_Agent, call the save_email_draft tool...'), SELECT THAT AGENT.\n- If the Orchestrator asks the Clarification_Agent to ask the user (Mehmet_Gur), SELECT Clarification_Agent.\n- If the Clarification_Agent just asked a question, SELECT Mehmet_Gur (User Proxy).\n- If any agent other than the Orchestrator or Mehmet_Gur just spoke (e.g., Research_Agent provided results, Summarization_Agent provided summary, Email_Drafting_Agent provided body, Email_Processing_Agent provided sentiment or tool confirmation), SELECT Orchestrator to process the result and continue the plan.\n- If Mehmet_Gur just provided input, SELECT Orchestrator.\n- If the Orchestrator just gave the FINAL_OUTPUT, SELECT Orchestrator (to say TERMINATE).\n- Otherwise, if unsure or the conversation seems stuck, SELECT Orchestrator to decide the next step.\n\nOnly return the exact name of the single agent selected.",
+    "allow_repeated_speaker": true,
+    "max_selector_attempts": 3
+  }
+}
